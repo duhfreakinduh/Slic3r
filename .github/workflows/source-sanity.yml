@@ -44,6 +44,8 @@ jobs:
               '.stl', '.obj', '.amf', '.3mf', '.pdf', '.ttf', '.woff', '.dll',
               '.exe', '.so', '.a', '.o', '.dylib', '.mp3', '.mp4'
           }
+          left_marker = '<' * 7
+          right_marker = '>' * 7
 
           for path in root.rglob('*'):
               if not path.is_file() or '.git' in path.parts:
@@ -56,12 +58,15 @@ jobs:
               if path.suffix.lower() in binary_suffixes or path.stat().st_size > 2_000_000:
                   continue
               try:
-                  text = path.read_text(encoding='utf-8')
+                  lines = path.read_text(encoding='utf-8').splitlines()
               except (UnicodeDecodeError, OSError):
                   continue
-              for marker in ('<<<<<<< ', '=======\n', '>>>>>>> '):
-                  if marker in text:
-                      errors.append(f'{path.relative_to(root)}: unresolved merge marker {marker.strip()!r}')
+              for number, line in enumerate(lines, start=1):
+                  stripped = line.lstrip()
+                  if stripped.startswith(left_marker + ' ') or stripped.startswith(right_marker + ' '):
+                      errors.append(
+                          f'{path.relative_to(root)}:{number}: unresolved merge marker'
+                      )
 
           if errors:
               print('\n'.join(f'ERROR: {error}' for error in errors), file=sys.stderr)
